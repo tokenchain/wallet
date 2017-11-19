@@ -10,8 +10,8 @@ if (isLightWallet) {
   try {
     ccurl = require("./ccurl-interface");
   } catch (err) {
+    alert(err);
     ccurl = false;
-    console.log(err);
   }
 }
 
@@ -50,12 +50,6 @@ ipcRenderer.on("showPeers", function() {
 ipcRenderer.on("showFAQ", function() {
   if (typeof(UI) != "undefined") {
     UI.openHelpMenu();
-  }
-});
-
-ipcRenderer.on("showTransition", function() {
-  if (typeof(UI) != "undefined") {
-    UI.showTransitionModal();
   }
 });
 
@@ -134,7 +128,7 @@ ipcRenderer.on("updateSettings", function(event, settings) {
 });
 
 ipcRenderer.on("stopCcurl", function(event, callback) {
-  console.log("in stopCcurl renderer"); 
+  console.log("in stopCcurl renderer");
   if (ccurl && connection.ccurlProvider) {
     console.log("calling ccurlInterruptAndFinalize with " + connection.ccurlProvider);
     ccurl.ccurlInterruptAndFinalize(connection.ccurlProvider);
@@ -143,6 +137,13 @@ ipcRenderer.on("stopCcurl", function(event, callback) {
   console.log("Calling relaunchApplication");
   ipcRenderer.send("relaunchApplication", true);
 });
+
+ipcRenderer.on('showRecovery', function(event, callback) {
+  console.log('enter recovery tool')
+  if (typeof(UI) !== "undefined") {
+    UI.showRecoveryModal()
+  }
+})
 
 function _hoverAmountStart(amount) {
   ipcRenderer.send("hoverAmountStart", amount);
@@ -178,11 +179,6 @@ function _clearSeedFromClipboard(seed) {
   }
 }
 
-function _finishedTransitioningToKeccak() {
-  connection.keccak = true;
-  ipcRenderer.send("finishedTransitioningToKeccak");
-}
-
 /*
 function _logUINotification(type, message) {
   ipcRenderer.send("logUINotification", type, message);
@@ -199,7 +195,6 @@ process.once("loaded", function() {
   global.relaunchApplication = _relaunchApplication;
   global.updateAppInfo = _updateAppInfo;
   global.clearSeedFromClipboard = _clearSeedFromClipboard;
-  global.finishedTransitioningToKeccak = _finishedTransitioningToKeccak;
 
   if (typeof(ccurl) != "undefined") {
     global.ccurl = ccurl;

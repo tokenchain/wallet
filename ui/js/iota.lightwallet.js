@@ -1,3 +1,12 @@
+var localInterruptAttachingToTangle = function(callback) {
+    console.log("Light Wallet: localInterruptAttachingToTangle");
+
+    ccurl.ccurlInterrupt(connection.ccurlProvider);
+
+    if (callback) {
+      return callback();
+    }
+}
 var localAttachToTangle = function(trunkTransaction, branchTransaction, minWeightMagnitude, trytes, callback) {
     console.log("Light Wallet: localAttachToTangle");
 
@@ -16,15 +25,7 @@ var localAttachToTangle = function(trunkTransaction, branchTransaction, minWeigh
     })
 }
 
-var localInterruptAttachingToTangle = function(callback) {
-    console.log("Light Wallet: localInterruptAttachingToTangle");
-
-    ccurl.ccurlInterrupt(connection.ccurlProvider);
-
-    if (callback) {
-      return callback();
-    }
-}
-
 iota.api.attachToTangle = localAttachToTangle;
+iota.api.__proto__.attachToTangle = localAttachToTangle;
 iota.api.interruptAttachingToTangle = localInterruptAttachingToTangle;
+iota.api.__proto__.interruptAttachingToTangle = localInterruptAttachingToTangle;

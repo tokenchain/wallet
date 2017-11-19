@@ -91,12 +91,15 @@ var UI = (function(UI, $, undefined) {
     if (id) {
       id = UI.format(id);
     }
-    
+
     return "<span class='clipboard' title='" + text + "' data-clipboard-text='" + text + "'" + (id ? " id='" + id + "'" : "") + ">" + text + "</span>";
   }
 
   UI.formatDate = function(timestamp, full) {
-    var date = new Date(timestamp*1000);
+    if (timestamp<1262304000000) {
+      timestamp = timestamp * 1000
+    }
+    var date = new Date(timestamp);
 
     return ("0"+date.getDate()).substr(-2) + "/" + ("0"+(date.getMonth()+1)).substr(-2) + (full ? "/" + date.getFullYear() : "") + " " + ("0"+date.getHours()).substr(-2) + ":" + ("0"+date.getMinutes()).substr(-2);
   }
@@ -178,7 +181,7 @@ var UI = (function(UI, $, undefined) {
         backend: {
           loadPath: "../locales/{{lng}}/{{ns}}.json"
         },
-        debug: false 
+        debug: false
     }, function(err, t) {
       jqueryI18next.init(i18next, $, {useOptionsAttr: true});
       $("*[data-i18n]").localize();
@@ -246,6 +249,9 @@ var UI = (function(UI, $, undefined) {
       connection.depth = parseInt(settings.depth, 10);
     }
 
+    if (settings.hasOwnProperty("ccurl")) {
+      connection.ccurl = parseInt(settings.ccurl, 10);
+    }
     var changeNode = false;
 
     if (settings.hasOwnProperty("host") && settings.host != connection.host) {
@@ -260,10 +266,8 @@ var UI = (function(UI, $, undefined) {
     if (changeNode) {
       iota.changeNode({"host": connection.host, "port": connection.port});
 
-      if (localAttachToTangle) {
+      if (connection.lightWallet) {
         iota.api.attachToTangle = localAttachToTangle;
-      }
-      if (localInterruptAttachingToTangle) {
         iota.api.interruptAttachingToTangle = localInterruptAttachingToTangle;
       }
     }
@@ -306,7 +310,7 @@ var UI = (function(UI, $, undefined) {
     } else {
       message = String(message);
     }
-    
+
     if (arguments.length == 1) {
       options = {};
       returnKey = false;

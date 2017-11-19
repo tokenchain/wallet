@@ -22,11 +22,7 @@ var UI = (function(UI, $, undefined) {
       clearInterval(loginGradientInterval);
     }, 60000);
 
-    if (!connection.keccak) {
-      _loginFormShownCallback = UI.showTransitionModal;
-    }
-
-    UI.handleTransitioning();
+    UI.handleRecovery();
     UI.handleHelpMenu();
     UI.handleNetworkSpamming();
     UI.handlePastingTrytes();
@@ -96,7 +92,7 @@ var UI = (function(UI, $, undefined) {
         if (!seed) {
           throw UI.t("seed_is_required");
         } else if (seed.match(/[^A-Z9]/) || seed.match(/^[9]+$/)) {
-          throw UI.t("invalid_seed");
+          throw UI.t("invalid_characters");
         } else if (seed.length < 60) {
           if (connection.allowShortSeedLogin) {
             _seedError = UI.t("seed_not_secure");
@@ -156,9 +152,6 @@ var UI = (function(UI, $, undefined) {
   }
 
   UI.showAppScreen = function() {
-    oldIota = null;
-    UI.isTransitioningSeed = false;
-    
     console.log("UI.showAppScreen");
 
     clearInterval(loginGradientInterval);
@@ -175,7 +168,7 @@ var UI = (function(UI, $, undefined) {
     UI.animateStacks(0);
 
     if (_seedError) {
-      var options = {timeOut: 10000, 
+      var options = {timeOut: 10000,
                      extendedTimeOut: 10000};
 
       UI.notify("error", _seedError, options);
@@ -202,6 +195,7 @@ var UI = (function(UI, $, undefined) {
         "port": connection.port,
         "depth": connection.depth,
         "minWeightMagnitude": connection.minWeightMagnitude,
+        "ccurl": connection.ccurl,
         "ccurlPath": connection.ccurlPath,
         "language": connection.language,
         "allowShortSeedLogin": connection.allowShortSeedLogin ? 1 : 0,
@@ -227,7 +221,7 @@ var UI = (function(UI, $, undefined) {
       var $stack = $(this);
 
       var onOpen = $stack.data("onopen");
-      
+
       if (onOpen && UI[onOpen]) {
         UI[onOpen]();
       }

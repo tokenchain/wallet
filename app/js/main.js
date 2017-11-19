@@ -58,7 +58,8 @@ var App = (function(App, undefined) {
   var didKillNode               = false;
   var settings                  = {};
   var isDevelopment             = String(process.env.NODE_ENV).trim() === "development";
-  var isDebug                   = process.argv.indexOf("debug") !== -1;
+  var isDebug                   = process.argv.indexOf("--enableDeveloperConsole") !== -1;
+  var showDevTools              = false;
   var didCheckForUpdates        = false;
   var appVersion                = require("../../package.json").version;
   var isLookingAtServerLog      = false;
@@ -75,7 +76,7 @@ var App = (function(App, undefined) {
   App.uiIsInitialized           = false;
   App.doNodeStarted             = false;
 
-  var minWeightMagnitudeMinimum = (isTestNet ? 9 : 15);
+  var minWeightMagnitudeMinimum = (isTestNet ? 9 : 14);
   var deleteDb                  = false;
   var deleteAnyways             = false;
   var isFullScreen              = false;
@@ -173,6 +174,9 @@ var App = (function(App, undefined) {
       } else if (settings.minWeightMagnitude < minWeightMagnitudeMinimum) {
         settings.minWeightMagnitude = minWeightMagnitudeMinimum;
       }
+      if (!settings.hasOwnProperty("ccurl")) {
+        settings.ccurl = 0;
+      }
       if (!settings.hasOwnProperty("nodes") || typeof settings.nodes != "object") {
         settings.nodes = [];
       }
@@ -188,7 +192,7 @@ var App = (function(App, undefined) {
     } catch (err) {
       console.log("Error reading settings:");
       console.log(err);
-      settings = {bounds: {width: 520, height: 780}, checkForUpdates: 1, lastUpdateCheck: 0, showStatusBar: 0, isFirstRun: 1, port: (isTestNet ? 14900 : 14265), udpReceiverPort: 14600, tcpReceiverPort: 15600, sendLimit: 0, nodes: [], dbLocation: "", allowShortSeedLogin: 0, keccak: 0};
+      settings = {bounds: {width: 520, height: 780}, checkForUpdates: 1, lastUpdateCheck: 0, showStatusBar: 0, isFirstRun: 1, port: (isTestNet ? 14900 : 14265), udpReceiverPort: 14600, tcpReceiverPort: 15600, sendLimit: 0, nodes: [], dbLocation: "", allowShortSeedLogin: 0, keccak: 0, ccurl: 0};
     }
 
     try {
@@ -231,7 +235,6 @@ var App = (function(App, undefined) {
       settings.isFirstRun = 0;
 
       var settingsFile = path.join(appDataDirectory, "settings.json");
-
       fs.writeFileSync(settingsFile, JSON.stringify(settings));
     } catch (err) {
       console.log("Error writing settings:");
@@ -399,7 +402,7 @@ var App = (function(App, undefined) {
       }
 
       win = new electron.BrowserWindow(windowOptions);
-      if (isDebug) {
+      if (showDevTools) {
         win.toggleDevTools({mode: "undocked"});
       }
       win.setAspectRatio(11 / 16);
@@ -522,17 +525,6 @@ var App = (function(App, undefined) {
           }
         },
         {
-          label: App.t("toggle_web_inspector"),
-          accelerator: process.platform === "darwin" ? "Alt+Command+I" : "Ctrl+Shift+I",
-          click() {
-            if (otherWin) {
-              otherWin.toggleDevTools({mode: "undocked"});
-            } else if (App.uiIsReady) {
-              win.webContents.send("toggleDeveloperTools");
-            }
-          }
-        },
-        {
           label: (isFullScreen ? App.t("exit_full_screen") : App.t("enter_full_screen")),
           accelerator: process.platform === "darwin" ? "Ctrl+Command+F" : "F11",
           click() {
@@ -546,19 +538,19 @@ var App = (function(App, undefined) {
       ]
     });
 
-    var languages = [["de", App.t("german"), "Deutsch"], 
-                     ["el", App.t("greek"), "Ελληνικά"], 
-                     ["en", App.t("english"), "English"], 
-                     ["es-ES", App.t("spanish"), "Español"], 
-                     ["fr", App.t("french"), "Français"], 
-                     ["it", App.t("italian"), "Italiano"], 
+    var languages = [["de", App.t("german"), "Deutsch"],
+                     ["el", App.t("greek"), "Ελληνικά"],
+                     ["en", App.t("english"), "English"],
+                     ["es-ES", App.t("spanish"), "Español"],
+                     ["fr", App.t("french"), "Français"],
+                     ["it", App.t("italian"), "Italiano"],
                      ["ja", App.t("japanese"), "日本語"],
                      ["ko", App.t("korean"), "한국어"],
-                     ["nl", App.t("dutch"), "Nederlands"], 
-                     ["pt-PT", App.t("portugese"), "Português"], 
-                     ["ru", App.t("russian"), "Русский"], 
-                     ["sv-SE", App.t("swedish"), "Svenska"], 
-                     ["tr", App.t("turkish"), "Türkçe"], 
+                     ["nl", App.t("dutch"), "Nederlands"],
+                     ["pt-PT", App.t("portugese"), "Português"],
+                     ["ru", App.t("russian"), "Русский"],
+                     ["sv-SE", App.t("swedish"), "Svenska"],
+                     ["tr", App.t("turkish"), "Türkçe"],
                      ["zh-CN", App.t("chinese_simplified"), "中文（简体)"],
                      ["zh-TW", App.t("chinese_traditional"), "中文 (繁體)"]];
 
@@ -577,7 +569,7 @@ var App = (function(App, undefined) {
       var translatedLanguage = languages[i][1].trim();
       var originalLanguage   = languages[i][2].trim();
 
-      template[1].submenu[3].submenu.push({
+      template[1].submenu[2].submenu.push({
         label: (translatedLanguage != originalLanguage ? translatedLanguage + " - " + originalLanguage : translatedLanguage),
         click(item) {
           App.changeLanguage(item.id.replace("language-", ""));
@@ -589,11 +581,10 @@ var App = (function(App, undefined) {
     }
 
     if (simple) {
-      template[1].submenu.splice(0, 1);
-      template[1].submenu.splice(1, 1);
+      template[1].submenu.splice(0, 2); // Only language
     } else {
       if (process.platform == "win32") {
-        template[1].submenu.splice(2, 1);
+        template[1].submenu.splice(1, 1); // Hide fullscreen
       }
 
       template.push(
@@ -630,9 +621,9 @@ var App = (function(App, undefined) {
             }
           },
           {
-            label: App.t("transition"),
+            label: App.t("reclaim_tool"),
             click(item) {
-              App.showTransition();
+              App.showRecovery();
             }
           },
           {
@@ -688,7 +679,7 @@ var App = (function(App, undefined) {
       });
 
       if (settings.lightWallet == 1) {
-        template[2].submenu[13].label = App.t("switch_to_full_node");
+        template[2].submenu[14].label = App.t("switch_to_full_node");
         // Remove "view neighbors and view server log" options.
         template[2].submenu.splice(1, 3);
         // Remove "network spammer and open database folder" options.
@@ -1017,7 +1008,7 @@ var App = (function(App, undefined) {
     }
   }
 
-  App.start = function() {  
+  App.start = function() {
     if (settings.lightWallet == 1 && (!settings.lightWalletHost || !settings.lightWalletPort)) {
       App.showSetupWindow({"section": "light-node"});
     } else if (settings.lightWallet == 0 && settings.nodes.length == 0) {
@@ -1240,7 +1231,7 @@ var App = (function(App, undefined) {
       params.push(path.join(jarDirectory, "iri" + (isTestNet ? "-testnet" : "") + ".jar"));
 
       // temporary !
-      // Only rescan once 
+      // Only rescan once
       if (!('rescan' in settings) || settings.rescan) {
           params.push("--rescan");
 
@@ -1458,7 +1449,7 @@ var App = (function(App, undefined) {
         if (settings.dbLocation && settings.dbLocation != databaseDirectory) {
           //Todo: During db move, user should not close the app? How to prevent..
           App.moveDatabase(settings.dbLocation);
-          databaseDirectory = settings.dbLocation; //because this is not reloaded during relaunch.. 
+          databaseDirectory = settings.dbLocation; //because this is not reloaded during relaunch..
         }
 
         App.start();
@@ -1570,6 +1561,7 @@ var App = (function(App, undefined) {
         ccurlPath = path.join(resourcesDirectory, "ccurl", "lin" + (is64BitOS ? "64" : "32"));
       }
 
+
       win.webContents.send("nodeStarted", "file://" + path.join(resourcesDirectory, "ui").replace(path.sep, "/") + "/index.html", {
           "inApp": 1,
           "showStatus": settings.showStatusBar,
@@ -1577,6 +1569,7 @@ var App = (function(App, undefined) {
           "port": (settings.lightWallet == 1 ? settings.lightWalletPort : settings.port),
           "depth": settings.depth,
           "minWeightMagnitude": settings.minWeightMagnitude,
+          "ccurl": settings.ccurl,
           "ccurlPath": ccurlPath,
           "language": settings.language,
           "allowShortSeedLogin": settings.allowShortSeedLogin,
@@ -1738,11 +1731,6 @@ var App = (function(App, undefined) {
         }
       }
     });
-  }
-
-  App.finishedTransitioningToKeccak = function() {
-    settings.keccak = 1;
-    App.saveSettings();
   }
 
   App.startTrackingCPU = function() {
@@ -2011,13 +1999,6 @@ var App = (function(App, undefined) {
     }
   }
 
-  App.showTransition = function() {
-    if (App.windowIsReady()) {
-      App.showWindowIfNotVisible();
-      win.webContents.send("showTransition");
-    }
-  }
-
   App.pasteTrytes = function() {
     if (App.windowIsReady()) {
       App.showWindowIfNotVisible();
@@ -2032,16 +2013,17 @@ var App = (function(App, undefined) {
     }
   }
 
-  App.editNodeConfiguration = function(walletType) {
+  App.showRecovery = function () {
     if (App.windowIsReady()) {
-      App.showWindowIfNotVisible();
-      if (walletType === undefined) {
-        walletType = settings.lightWallet;
-      }
-      if (walletType == 1) {
-        var config = {"lightWallet": 1, "lightWalletHost": settings.lightWalletHost, "lightWalletPort": settings.lightWalletPort, "minWeightMagnitude": settings.minWeightMagnitude, "testNet": isTestNet, "minWeightMagnitudeMinimum": minWeightMagnitudeMinimum};
+      App.showWindowIfNotVisible()
+      win.webContents.send("showRecovery")
+    }
+  }
 
-        var req = https.get('https://iotasupport.com/providers.json?' + (new Date().getTime()));
+  App.fetchProviders = function (urls) {
+    return Promise.all(urls.map(url => {
+      return new Promise((resolve, reject) => {
+        var req = https.get(url + '?' + (new Date().getTime()));
         req.on('response', function (res) {
           var body = '';
           res.on('data', function (chunk) {
@@ -2049,24 +2031,53 @@ var App = (function(App, undefined) {
           });
           res.on('end', function () {
             try {
-              config.lightWalletHosts = shuffleArray(JSON.parse(body)).filter(function(host) {
+              var parsed = JSON.parse(body).filter(function(host) {
                 return host.match(/^(https?:\/\/.*):([0-9]+)$/i);
               });
+              resolve(parsed)
             } catch (err) {
-              console.log(err);
-            } finally {
-              win.webContents.send("editNodeConfiguration", config);
+              resolve(false);
             }
           });
+          res.on('error', function (err) {
+            resolve(false);
+          })
         });
+      })
+    })).then(res => {
+      var hosts = []
+      res.filter(a => Array.isArray(a)).forEach(list => list.forEach(host => {
+        if (hosts.indexOf(host) === -1) {
+          hosts.push(host)
+        }
+      }))
+      if (!hosts.length) {
+        return hosts
+      }
+      return shuffleArray(hosts)
+    })
+  }
 
-        req.on('error', function(err) {
-          console.log(err);
+  App.editNodeConfiguration = function(walletType) {
+    if (App.windowIsReady()) {
+      App.showWindowIfNotVisible();
+      if (walletType === undefined) {
+        walletType = settings.lightWallet;
+      }
+      if (walletType == 1) {
+        var config = {"lightWallet": 1, "lightWalletHost": settings.lightWalletHost, "lightWalletPort": settings.lightWalletPort, "minWeightMagnitude": settings.minWeightMagnitude, "testNet": isTestNet, "minWeightMagnitudeMinimum": minWeightMagnitudeMinimum, "ccurl": settings.ccurl};
+        var urls = [
+          'https://iotasupport.com/providers.json',
+          'https://static.iota.org/providers.json'
+        ]
+        App.fetchProviders(urls).then(res => {
+          config.lightWalletHosts = res
+        }).catch(err => {
+          console.log(err)
+        }).then(() => {
           win.webContents.send("editNodeConfiguration", config);
-        });
-
-        req.end();
-      } else {
+        })
+     } else {
         var config = {"lightWallet": 0, "port": settings.port, "udpReceiverPort": settings.udpReceiverPort, "tcpReceiverPort": settings.tcpReceiverPort, "sendLimit": settings.sendLimit, "depth": settings.depth, "minWeightMagnitude": settings.minWeightMagnitude, "testNet": isTestNet, "dbLocation": databaseDirectory, "minWeightMagnitudeMinimum": minWeightMagnitudeMinimum};
         win.webContents.send("editNodeConfiguration", config);
       }
@@ -2212,6 +2223,10 @@ var App = (function(App, undefined) {
         }
       }
 
+      if (configuration.hasOwnProperty("ccurl")) {
+        settings.ccurl = parseInt(configuration.ccurl, 10);
+      }
+
       App.saveSettings();
 
       if (relaunch || !App.windowIsReady()) {
@@ -2219,12 +2234,14 @@ var App = (function(App, undefined) {
       } else if (lightWalletHostChange && settings.lightWallet == 1) {
         win.webContents.send("updateSettings", {
           "host": settings.lightWalletHost,
-          "port": settings.lightWalletPort
+          "port": settings.lightWalletPort,
+          "ccurl": settings.ccurl
         });
       } else {
         win.webContents.send("updateSettings", {
           "depth": settings.depth,
           "minWeightMagnitude": settings.minWeightMagnitude,
+          "ccurl": settings.ccurl,
           "addedNodes": addedNodes,
           "removedNodes": removedNodes
         });
@@ -2562,5 +2579,3 @@ electron.ipcMain.on("updateStatusBar", function(event, data) {
 electron.ipcMain.on("updateAppInfo", function(event, data) {
   App.updateAppInfo(data);
 });
-
-electron.ipcMain.on("finishedTransitioningToKeccak", App.finishedTransitioningToKeccak);
